@@ -3,14 +3,6 @@ Description: >
   Serverless Text-to-Speech (S3 Static Website + API Gateway HTTP API + Lambda + Polly + Private Audio Bucket)
 
 Parameters:
-  WebBucketName:
-    Type: String
-    Description: Globally-unique name for the public S3 bucket that hosts index.html
-    AllowedPattern: '^[a-z0-9.-]+$'
-  AudioBucketName:
-    Type: String
-    Description: Globally-unique name for the private audio bucket
-    AllowedPattern: '^[a-z0-9.-]+$'
   UrlTtlSeconds:
     Type: Number
     Default: 3600
@@ -25,7 +17,7 @@ Resources:
   WebBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref WebBucketName
+      BucketName: tts-web-sfh-tts-2025-09
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false
         BlockPublicPolicy: false
@@ -57,7 +49,7 @@ Resources:
   AudioBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref AudioBucketName
+      BucketName: tts-audio-sfh-tts-2025-09
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -113,7 +105,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          AUDIO_BUCKET: !Ref AudioBucketName
+          AUDIO_BUCKET: tts-audio-sfh-tts-2025-09
           URL_TTL_SECONDS: !Ref UrlTtlSeconds
           DEFAULT_VOICE_ID: !Ref DefaultVoiceId
       Code:
@@ -224,4 +216,4 @@ Outputs:
     Description: S3 static website endpoint
     Value: !GetAtt WebBucket.WebsiteURL
   AudioBucketName:
-    Value: !Ref AudioBucketName
+    Value: tts-audio-sfh-tts-2025-09
