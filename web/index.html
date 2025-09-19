@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ultimate TTS Studio</title>
+  <style>
+    :root {
+      --bg: #0b1020; --panel:#121735; --ink:#e9ecff;
+      --sub:#9aa3bf; --accent:#7c4dff; --ok:#29c36a; --warn:#ff5555;
+    }
+    body.light { --bg:#f5f5ff; --panel:#fff; --ink:#222; --sub:#555; --accent:#6a4dff; --ok:#29c36a; --warn:#d22; }
+
+    * { box-sizing: border-box; font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin:0; background: radial-gradient(1200px 800px at 20% -20%, #1a2150 0%, #0b1020 50%, #070a16 100%); color:var(--ink); transition:.3s; }
+    body.light { background: linear-gradient(180deg, #fafaff, #dfe4ff); }
+    .wrap { max-width: 900px; margin: 32px auto; padding: 24px; }
+    .card { background: var(--panel); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.25); margin-bottom: 20px; }
+    h1 { margin: 0 0 10px; font-size: 34px; font-weight:600; text-align:center; }
+    .sub { color: var(--sub); margin-bottom: 20px; font-size: 15px; text-align:center; }
+    textarea { width: 100%; min-height: 180px; background:#0c0f25; color:var(--ink);
+      border:1px solid #232a55; border-radius: 10px; padding:14px; font-size:16px; outline: none; resize: vertical; }
+    body.light textarea, body.light select, body.light input[type=range] { background:#fff; border-color:#ccc; color:#222; }
+    .row { display:flex; gap:12px; align-items:center; margin:14px 0; flex-wrap:wrap; }
+    select, input[type=range] {
+      background:#0c0f25; color:var(--ink); border:1px solid #232a55;
+      border-radius:8px; padding:8px 12px; font-size:15px;
+    }
+    button {
+      background: linear-gradient(135deg, #6a4dff 0%, #9b5dff 100%);
+      color:white; border:none; border-radius:8px; padding:12px 24px;
+      font-weight:600; cursor:pointer; transition:.2s;
+    }
+    button:hover { filter:brightness(1.1); }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .main-btn { font-size:18px; width:100%; max-width:320px; margin: 0 auto; display:block; }
+    .secondary-btn { background:#333; font-size:14px; padding:8px 14px; }
+    .status { margin-top:14px; color:var(--sub); text-align:center; }
+    audio { width:100%; margin-top:16px; }
+    .pill { display:inline-block; padding:4px 10px; border-radius:999px;
+      background:#0e1433; color:#b8c1ff; font-size:12px; border:1px solid #1e2550; text-align:center; }
+    .counter { font-size:13px; margin-top:6px; }
+    .counter span { font-weight:bold; }
+    .counter.over { color: var(--warn); }
+    .history h3 { margin:0 0 8px; font-size:18px; font-weight:600; }
+    .history-item { background:rgba(255,255,255,.05); padding:8px 12px; border-radius:6px; margin:6px 0; }
+    .history-item a { color:var(--accent); text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Ultimate TTS Studio</h1>
+      <div class="sub">Serverless: API Gateway → Lambda → Amazon Polly → S3</div>
+      <div class="pill">Capstone Project — Stanlous Francis Harley</div>
+
+      <textarea id="text" placeholder="Type or paste text…">Hello from Ghana! Testing the refined AWS TTS app.</textarea>
+      <div class="counter" id="counter">0 / 1500 characters</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label>Voice:</label>
+        <select id="voice">
+          <option value="Amy">Amy (British)</option>
+          <option value="Brian">Brian (British)</option>
+          <option value="Emma">Emma (British)</option>
+          <option value="Joanna">Joanna (US)</option>
+          <option value="Matthew">Matthew (US)</option>
+        </select>
+        <button id="preview">Preview Voice</button>
+      </div>
+
+      <div class="row">
+        <label>Pitch: <span id="pitchVal">1.0</span></label>
+        <input id="pitch" type="range" min="0.5" max="2" step="0.1" value="1">
+        <label>Speed: <span id="speedVal">1.0</span></label>
+        <input id="speed" type="range" min="0.5" max="2" step="0.1" value="1">
+        <label>Volume: <span id="volVal">1.0</span></label>
+        <input id="volume" type="range" min="0" max="1" step="0.1" value="1">
+      </div>
+
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn" class="main-btn">Convert to Speech</button>
+        <div style="margin-top:10px;">
+          <button id="theme" class="secondary-btn">Toggle Theme</button>
+        </div>
+      </div>
+
+      <div id="status" class="status">Ready.</div>
+      <audio id="player" controls></audio>
+      <div style="text-align:center; margin-top:10px;">
+        <a id="download" class="pill" href="#" download>Download Audio</a>
+      </div>
+    </div>
+
+    <div class="card history">
+      <h3>History</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+<script>
+  const API_BASE = "https://xwade0nk44.execute-api.us-east-1.amazonaws.com";
+  const MAX_CHARS = 1500;
+  const $ = id => document.getElementById(id);
+  const txt=$('text'), btn=$('btn'), statusEl=$('status'),
+        player=$('player'), dl=$('download'),
+        pitch=$('pitch'), speed=$('speed'), volume=$('volume');
+  const pitchVal=$('pitchVal'), speedVal=$('speedVal'), volVal=$('volVal');
+
+  pitch.oninput=()=>pitchVal.textContent=pitch.value;
+  speed.oninput=()=>speedVal.textContent=speed.value;
+  volume.oninput=()=>{ volVal.textContent=volume.value; player.volume=volume.value; };
+
+  // Counter with limit
+  txt.addEventListener('input',()=>{
+    const len = txt.value.length;
+    const counter = $('counter');
+    counter.textContent = `${len} / ${MAX_CHARS} characters`;
+    counter.classList.toggle("over", len > MAX_CHARS);
+    btn.disabled = len > MAX_CHARS;
+  });
+
+  // Preview voice
+  $('preview').addEventListener('click',async()=>{
+    try{
+      statusEl.textContent="Previewing…";
+      const res=await fetch(`${API_BASE}/speak`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:"Hello, testing voice.",voiceId:$('voice').value})
+      });
+      const data=await res.json();
+      player.src=data.url; player.play(); statusEl.textContent="Preview ready.";
+    }catch(e){statusEl.textContent="Preview failed.";console.error(e);}
+  });
+
+  // Convert main
+  btn.addEventListener('click',async()=>{
+    const text=txt.value.trim();
+    if(!text){alert("Enter text.");return;}
+    if(text.length > MAX_CHARS){alert("Too long, max 1500 chars.");return;}
+    btn.disabled=true; statusEl.textContent="Working…";
+    try{
+      const res=await fetch(`${API_BASE}/speak`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text,voiceId:$('voice').value,pitch:pitch.value,speed:speed.value})
+      });
+      if(!res.ok)throw new Error("Bad response");
+      const data=await res.json();
+      player.src=data.url;
+      dl.href=data.url;
+      dl.download=`speech-${Date.now()}.mp3`;
+      statusEl.textContent=data.cached?"Ready (cache ✅)":"Ready (fresh ✅)";
+      player.play().catch(()=>{});
+      addHistory(text,data.url);
+    }catch(e){statusEl.textContent="Something went wrong.";console.error(e);}
+    finally{btn.disabled=false;}
+  });
+
+  // Theme toggle
+  $('theme').addEventListener('click',()=> document.body.classList.toggle("light"));
+
+  // History
+  function addHistory(text,url){
+    const item=document.createElement("div");
+    item.className="history-item";
+    item.innerHTML=`<a href="${url}" target="_blank">${text.slice(0,60)}...</a>`;
+    $('historyList').prepend(item);
+  }
+
+  // Init counter
+  txt.dispatchEvent(new Event('input'));
+</script>
+</body>
+</html>
