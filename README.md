@@ -62,7 +62,7 @@ These images demonstrate the configuration and working outcome. (They’re also 
 
 - Final working UI result (audio generated & playable)  
   ![Final static HTML outcome](evidence/Final%20Static%20HTML%20Product%20Outcome.png)
-
+  
 > If I add more evidence later, I’ll keep dropping files into `evidence/` and reference them here.
 
 ---
